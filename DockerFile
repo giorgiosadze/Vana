@@ -1,5 +1,6 @@
 FROM golang
 WORKDIR /app
+VOLUME /data/db
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .

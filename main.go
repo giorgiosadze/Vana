@@ -4,11 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"net/http"
-	"regexp"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
 var db *sql.DB
@@ -27,16 +25,12 @@ func validateUserInput(user User) error {
 	if len(user.Password) < 6 {
 		return errors.New("password must be at least 6 characters long")
 	}
-	emailRegex := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$`)
-	if !emailRegex.MatchString(user.Email) {
-		return errors.New("invalid email format")
-	}
 	return nil
 }
 
 func main() {
 
-	db, err := sql.Open("sqlite3", "./data.db")
+	db, err := sql.Open("sqlite3", "/data/db/data.db")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -89,7 +83,7 @@ func main() {
     CREATE TABLE IF NOT EXISTS Users (
         user_id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL,
-        password TEXT NOT NULL,
+        password TEXT NOT NULL
     );`
 	_, err = db.Exec(createUsersTable)
 	if err != nil {
@@ -150,7 +144,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Create user
 	insertUserQuery := `INSERT INTO users (username, password, email) VALUES (?, ?, ?)`
-	_, err = db.Exec(insertUserQuery, user.Username, user.Password, user.Email)
+	_, err = db.Exec(insertUserQuery, user.Username, user.Password)
 	if err != nil {
 		http.Error(w, "Failed to create user account", http.StatusInternalServerError)
 		return
