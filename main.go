@@ -3,13 +3,36 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
+	"regexp"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
 var db *sql.DB
+
+// User structure to hold user information
+type User struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// Function to validate user input
+func validateUserInput(user User) error {
+	if len(user.Username) < 3 {
+		return errors.New("username must be at least 3 characters long")
+	}
+	if len(user.Password) < 6 {
+		return errors.New("password must be at least 6 characters long")
+	}
+	emailRegex := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$`)
+	if !emailRegex.MatchString(user.Email) {
+		return errors.New("invalid email format")
+	}
+	return nil
+}
 
 func main() {
 
@@ -62,6 +85,19 @@ func main() {
 		log.Println("options created successfully")
 	}
 
+	createUsersTable := `
+    CREATE TABLE IF NOT EXISTS Users (
+        user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        password TEXT NOT NULL,
+    );`
+	_, err = db.Exec(createUsersTable)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		log.Println("users created successfully")
+	}
+
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/logout", logoutHandler)
 	http.HandleFunc("/register", registerHandler)
@@ -93,12 +129,34 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
 	}
-	// handle registration
-	jsonResponse(w, "Register endpoint")
+
+	var user User
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	err = validateUserInput(user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Create user
+	insertUserQuery := `INSERT INTO users (username, password, email) VALUES (?, ?, ?)`
+	_, err = db.Exec(insertUserQuery, user.Username, user.Password, user.Email)
+	if err != nil {
+		http.Error(w, "Failed to create user account", http.StatusInternalServerError)
+		return
+	}
+
+	jsonResponse(w, map[string]string{"message": "User registered successfully"})
 }
 
 func createQHandler(w http.ResponseWriter, r *http.Request) {
