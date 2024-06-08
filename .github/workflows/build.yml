@@ -17,6 +17,8 @@ jobs:
           sudo apt-get -y install podman
           podman pull golang
 
+      - name: Get source
+        uses: actions/checkout@v3
       - name: Build container with Podman
         run: |
           ls
