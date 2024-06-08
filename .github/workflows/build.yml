@@ -18,4 +18,6 @@ jobs:
           podman pull golang
 
       - name: Build container with Podman
-        run: make build
+        run: |
+          ls
+          podman build -t vana -f DockerFile .
