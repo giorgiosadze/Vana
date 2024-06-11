@@ -4,9 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"net/http"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var db *sql.DB
@@ -143,7 +144,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create user
-	insertUserQuery := `INSERT INTO users (username, password, email) VALUES (?, ?, ?)`
+	insertUserQuery := `INSERT INTO users (username, password) VALUES (?, ?)`
 	_, err = db.Exec(insertUserQuery, user.Username, user.Password)
 	if err != nil {
 		http.Error(w, "Failed to create user account", http.StatusInternalServerError)
