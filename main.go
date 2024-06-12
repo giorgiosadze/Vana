@@ -18,6 +18,10 @@ type User struct {
 	Password string `json:"password"`
 }
 
+var users = map[string]string{
+	"testuser": "password123",
+}
+
 // Function to validate user input
 func validateUserInput(user User) error {
 	if len(user.Username) < 3 {
@@ -110,8 +114,18 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
 	}
-	// handle login
-	jsonResponse(w, "Login endpoint")
+
+	var user User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if password, ok := users[user.Username]; ok && password == user.Password {
+		jsonResponse(w, "Login successful")
+	} else {
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+	}
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
