@@ -139,13 +139,20 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 
+	db, err := sql.Open("sqlite3", "/data/db/data.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer db.Close()
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var user User
-	err := json.NewDecoder(r.Body).Decode(&user)
+	err = json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
