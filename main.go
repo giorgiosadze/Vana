@@ -3,44 +3,134 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var db *sql.DB
-
-// User structure to hold user information
 type User struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string   `json:"userName"`
+	Password string   `json:"passWord"`
+	Quizzes  []string `json:"quizzes"`
 }
 
-var users = map[string]string{
-	"testuser": "password123",
+type Response struct {
+	UserDetails   User   `json:"userDetails"`
+	CurrentQuiz   string `json:"currentQuiz"`
+	CurrentAnswer string `json:"currentAnswer"`
 }
 
-// Function to validate user input
-func validateUserInput(user User) error {
-	if len(user.Username) < 3 {
-		return errors.New("username must be at least 3 characters long")
-	}
-	if len(user.Password) < 6 {
-		return errors.New("password must be at least 6 characters long")
-	}
-	return nil
+type Quiz struct {
+	Id        int        `json:"Id"`
+	Questions []Question `json:"Questions"`
+}
+
+type Question struct {
+	Id            int      `json:"Id"`
+	QuestionText  string   `json:"QuestionText"`
+	Answers       []Answer `json:"Answers"`
+	CorrectAnswer Answer   `json:"Answer"`
+}
+
+type Answer struct {
+	Id         int
+	AnswerText string
 }
 
 func main() {
+	var db Data
+	db.Connect()
+	db.Init()
+	http.HandleFunc("/v1/login", loginHandler)
+	http.HandleFunc("/v1/logout", logoutHandler)
+	http.HandleFunc("/v1/UserRegister", UserRegisterHandler)
+	http.HandleFunc("/v1/createQuestion", createQHandler)
+	http.HandleFunc("/v1/readQuestion", readQHandler)
+	http.HandleFunc("/v1/updateQuestion", updateQHandler)
+	http.HandleFunc("/v1/deleteQuestion", deleteQHandler)
+	log.Fatal(http.ListenAndServe(":8000", nil))
+}
 
-	db, err := sql.Open("sqlite3", "/data/db/data.db")
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var user User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	var db Data
+	db.Connect()
+	u := db.QueryUser(User{user.Username, user.Password, nil})
+
+	if !(u.Username == user.Username && u.Password == user.Password) {
+		http.Error(w, "Invalid credentials", http.StatusBadRequest)
+		return
+	}
+
+	resp := Response{
+		UserDetails: User{
+			Username: u.Username,
+			Password: u.Password,
+			Quizzes:  u.Quizzes,
+		},
+		CurrentQuiz:   "",
+		CurrentAnswer: "",
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+
+}
+
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO
+	//
+}
+
+func UserRegisterHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO
+	//
+}
+
+func createQHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO
+	//
+}
+
+func readQHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO
+	//
+}
+
+func updateQHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO
+	//
+}
+
+func deleteQHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO
+	//
+}
+
+type Data struct {
+	DB *sql.DB
+}
+
+func (d *Data) Connect() {
+	db, err := sql.Open("sqlite3", "./data.db")
 	if err != nil {
 		log.Fatal(err)
 	}
+	d.DB = db
+}
 
-	defer db.Close()
+func (d *Data) Init() {
 
 	createQuizzesTable := `
     CREATE TABLE IF NOT EXISTS quizzes (
@@ -48,7 +138,7 @@ func main() {
         title TEXT NOT NULL,
         description TEXT
     );`
-	_, err = db.Exec(createQuizzesTable)
+	_, err := d.DB.Exec(createQuizzesTable)
 	if err != nil {
 		log.Fatal(err)
 	} else {
@@ -62,7 +152,7 @@ func main() {
         question_text TEXT NOT NULL,
         FOREIGN KEY (quiz_id) REFERENCES quizzes(quiz_id)
     );`
-	_, err = db.Exec(createQuestionsTable)
+	_, err = d.DB.Exec(createQuestionsTable)
 	if err != nil {
 		log.Fatal(err)
 	} else {
@@ -77,7 +167,7 @@ func main() {
         is_correct BOOLEAN,
         FOREIGN KEY (question_id) REFERENCES questions(question_id)
     );`
-	_, err = db.Exec(createOptionsTable)
+	_, err = d.DB.Exec(createOptionsTable)
 	if err != nil {
 		log.Fatal(err)
 	} else {
@@ -90,128 +180,83 @@ func main() {
         username TEXT NOT NULL,
         password TEXT NOT NULL
     );`
-	_, err = db.Exec(createUsersTable)
+	_, err = d.DB.Exec(createUsersTable)
 	if err != nil {
 		log.Fatal(err)
 	} else {
 		log.Println("users created successfully")
 	}
-
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/logout", logoutHandler)
-	http.HandleFunc("/register", registerHandler)
-	http.HandleFunc("/createQ", createQHandler)
-	http.HandleFunc("/readQ", readQHandler)
-	http.HandleFunc("/updateQ", updateQHandler)
-	http.HandleFunc("/deleteQ", deleteQHandler)
-
-	log.Fatal(http.ListenAndServe(":8000", nil))
-	log.Println("Listening on port 8000")
 }
 
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
+// ------- //
+// User DB //
+// ------- //
 
-	var user User
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
+func (d *Data) QueryUser(user User) User {
 
-	if password, ok := users[user.Username]; ok && password == user.Password {
-		jsonResponse(w, "Login successful")
-	} else {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-	}
+	row := d.DB.QueryRow(`
+			SELECT username, password 
+			FROM user 
+			WHERE username = ? AND password = ?`, user.Username, user.Password)
+	var username string
+	var password string
+	row.Scan(&username, &password)
+	return User{username, password, nil}
+}
+func (d *Data) CreateUser(user User) {
+	// TODO
+}
+func (d *Data) UpdateUser(user User) {
+	// TODO
+}
+func (d *Data) DeleteUser(user User) {
+	// TODO
 }
 
-func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-	// handle logout
-	jsonResponse(w, "Logout endpoint")
+// ------- //
+// Quiz DB //
+// ------- //
+
+func (d *Data) QueryQuiz(quiz Quiz) {
+	// TODO
+}
+func (d *Data) CreateQuiz(quiz Quiz) {
+	// TODO
+}
+func (d *Data) UpdateQuiz(quiz Quiz) {
+	// TODO
+}
+func (d *Data) DeleteQuiz(quiz Quiz) {
+	// TODO
 }
 
-func registerHandler(w http.ResponseWriter, r *http.Request) {
+// --------- //
+// Answer DB //
+// --------- //
 
-	db, err := sql.Open("sqlite3", "/data/db/data.db")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer db.Close()
-
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var user User
-	err = json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	err = validateUserInput(user)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Create user
-	insertUserQuery := `INSERT INTO users (username, password) VALUES (?, ?)`
-	_, err = db.Exec(insertUserQuery, user.Username, user.Password)
-	if err != nil {
-		http.Error(w, "Failed to create user account", http.StatusInternalServerError)
-		return
-	}
-
-	jsonResponse(w, map[string]string{"message": "User registered successfully"})
+func (d *Data) CreateAnswer(answer Answer) {
+	// TODO
+}
+func (d *Data) UpdateAnswer(answer Answer) {
+	// TODO
+}
+func (d *Data) DeleteAnswer(answer Answer) {
+	// TODO
 }
 
-func createQHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-	// handle create question
-	jsonResponse(w, "CreateQ endpoint")
-}
+// ----------- //
+// Question DB //
+// ----------- //
 
-func readQHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-	// handle read questions
-	jsonResponse(w, "ReadQ endpoint")
+func (d *Data) QueryQuestion(answer Answer) {
+	// TODO
 }
-
-func updateQHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-	// handle update question
-	jsonResponse(w, "UpdateQ endpoint")
+func (d *Data) CreateQuestion(answer Answer) {
+	// TODO
 }
-
-func deleteQHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-	// handle delete question
-	jsonResponse(w, "DeleteQ endpoint")
+func (d *Data) UpdateQuestion(answer Answer) {
+	// TODO
 }
-
-func jsonResponse(w http.ResponseWriter, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+func (d *Data) DeleteQuestion(answer Answer) {
+	// TODO
 }
