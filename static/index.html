@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vana - Questionnaire App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Vana Questionnaire</h1>
+            <div id="user-info" class="hidden">
+                <span id="username"></span>
+                <button id="logout-btn">Logout</button>
+            </div>
+        </header>
+        
+        <main>
+            <div id="login-form" class="auth-form">
+                <h2>Login</h2>
+                <div class="form-group">
+                    <label for="login-username">Username</label>
+                    <input type="text" id="login-username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" name="password" required>
+                </div>
+                <div class="form-actions">
+                    <button id="login-btn" class="primary-btn">Login</button>
+                    <p>Don't have an account? <a href="#" id="show-signup">Sign Up</a></p>
+                </div>
+                <div id="login-error" class="error-message"></div>
+            </div>
+            
+            <div id="signup-form" class="auth-form hidden">
+                <h2>Sign Up</h2>
+                <div class="form-group">
+                    <label for="signup-username">Username</label>
+                    <input type="text" id="signup-username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">Password</label>
+                    <input type="password" id="signup-password" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">Confirm Password</label>
+                    <input type="password" id="confirm-password" name="confirm-password" required>
+                </div>
+                <div class="form-actions">
+                    <button id="signup-btn" class="primary-btn">Sign Up</button>
+                    <p>Already have an account? <a href="#" id="show-login">Login</a></p>
+                </div>
+                <div id="signup-error" class="error-message"></div>
+            </div>
+            
+            <div id="quizzes-section" class="hidden">
+                <h2>Available Quizzes</h2>
+                <div id="quizzes-list"></div>
+                <button id="create-quiz-btn" class="primary-btn">Create New Quiz</button>
+            </div>
+            
+            <div id="quiz-details" class="hidden">
+                <h2 id="quiz-title"></h2>
+                <p id="quiz-description"></p>
+                <div id="questions-container"></div>
+                <button id="submit-quiz-btn" class="primary-btn">Submit Answers</button>
+            </div>
+        </main>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
